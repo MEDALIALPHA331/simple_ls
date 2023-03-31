@@ -6,7 +6,7 @@ use std::os::windows::prelude::*;
 pub fn is_hidden(file_path: &std::path::PathBuf) -> std::io::Result<bool> {
     let metadata = fs::metadata(file_path)?;
     let attributes = metadata.file_attributes();
-    
+
     if (attributes & 0x2) > 0 {
         Ok(true)
     } else {
@@ -16,24 +16,20 @@ pub fn is_hidden(file_path: &std::path::PathBuf) -> std::io::Result<bool> {
 
 fn main() {
     //? prepare flags
-    let mut hidden = false;
+    let mut hidden_only = false;
+    let mut all = false;
     let mut sorted = false;
 
-
-
-
-    // ? capture Arguments Safely
+    //? capture Arguments Safely
     let arguments: Vec<_> = env::args().into_iter().collect();
 
     match arguments.get(1) {
         Some(x) => match x.as_str() {
-            "all" | "-l" => {
-                hidden = true;
-                //todo: add other filters
-            },
-            "-a" => hidden = true,
-            "-s" => sorted = true,
-            "-h" | "help" => todo!("Implement Help paragraph"), 
+            "-l" | "all" => all = true,
+            "-a" | "hidden" => hidden_only = true,
+            "-s" | "sorted" => sorted = true,
+            "-h" | "help" => todo!("Implement Help paragraph"),
+            //todo: add multiple arguments capability
             _ => panic!("Argument '{x}' does not exist!"),
         },
         None => (),
@@ -43,26 +39,28 @@ fn main() {
         panic!("There is no second Parameter, remove {second_argument}");
     }
 
+    //? create list and print it
     //todo: add better error handling
     let mut entries: Vec<_> = fs::read_dir("")
         .unwrap()
         .map(|x| x.unwrap().path())
         .filter(|entry| {
-              if hidden {
-                  is_hidden(entry).unwrap() //? windows specific
-                  || entry.starts_with(".")
-              } else {
-                  true
-              }
+            if hidden_only {
+                is_hidden(entry).unwrap() || entry.starts_with(".")
+            } else if all {
+                true
+            } else {
+                !is_hidden(entry).unwrap()
+            }
         })
         .map(|buff| buff.to_string_lossy().to_string())
         .collect();
 
     if sorted {
-         entries.sort()
+        entries.sort()
     }
 
     for entry in entries {
-         println!("{}", entry);
-     }
+        println!("{}", entry);
+    }
 }
