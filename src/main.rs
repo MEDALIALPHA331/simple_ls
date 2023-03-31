@@ -1,8 +1,25 @@
 use std::{env, fs};
+
+#[cfg(windows)]
+use std::os::windows::prelude::*;
+
+pub fn is_hidden(file_path: &std::path::PathBuf) -> std::io::Result<bool> {
+    let metadata = fs::metadata(file_path)?;
+    let attributes = metadata.file_attributes();
+    
+    if (attributes & 0x2) > 0 {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 fn main() {
     //? prepare flags
     let mut hidden = false;
     let mut sorted = false;
+
+
 
 
     // ? capture Arguments Safely
@@ -29,14 +46,16 @@ fn main() {
     //todo: add better error handling
     let mut entries: Vec<_> = fs::read_dir("")
         .unwrap()
-        .map(|x| x.unwrap().path().to_string_lossy().to_string())
+        .map(|x| x.unwrap().path())
         .filter(|entry| {
               if hidden {
-                  entry.starts_with(".")
+                  is_hidden(entry).unwrap() //? windows specific
+                  || entry.starts_with(".")
               } else {
                   true
               }
         })
+        .map(|buff| buff.to_string_lossy().to_string())
         .collect();
 
     if sorted {
